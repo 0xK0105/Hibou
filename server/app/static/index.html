@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hibou — affichage des salles</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="logo">🦉</span> Hibou <span class="brand-sub">affichage des salles</span></div>
+  <nav class="tabs" id="tabs">
+    <button data-tab="planning" class="active">Planning</button>
+    <button data-tab="devices">Écrans</button>
+    <button data-tab="firmware">Firmware</button>
+    <button data-tab="settings">Réglages</button>
+    <a class="tablink" href="/flash">Mise en service ↗</a>
+  </nav>
+  <div class="chips" id="overview"></div>
+</header>
+
+<main>
+  <!-- ======================= PLANNING ======================= -->
+  <section id="tab-planning" class="tab active">
+    <div class="grid-2">
+      <div class="card">
+        <h2>Importer un emploi du temps</h2>
+        <form id="import-form" class="stack">
+          <label class="drop" id="drop">
+            <input type="file" name="file" accept=".ics,.ical,.csv,.txt" required>
+            <span id="drop-label">Déposer un fichier <b>.ics</b> ou <b>.csv</b>, ou cliquer pour choisir</span>
+          </label>
+          <div class="row">
+            <label>Mode
+              <select name="mode">
+                <option value="replace_range">Remplacer la période couverte par le fichier</option>
+                <option value="append">Ajouter aux cours existants</option>
+                <option value="replace_all">Tout remplacer</option>
+              </select>
+            </label>
+            <label class="check"><input type="checkbox" name="create_rooms" checked> Créer les salles inconnues</label>
+          </div>
+          <button class="primary" type="submit">Importer</button>
+        </form>
+        <div id="import-report"></div>
+        <details class="help">
+          <summary>Format CSV attendu</summary>
+          <pre>date;debut;fin;salle;matiere;enseignant;groupe
+16/11/2026;08:00;10:00;A101;Réseaux IP;M. Martin;TD1
+16/11/2026;10:15;12:15;A101, A102;Projet;Mme Leroy;Promo 2A</pre>
+          <p>Séparateur <code>;</code> ou <code>,</code>. Colonnes obligatoires : début, fin, salle (la date peut être incluse dans début/fin).
+          Plusieurs salles séparées par une virgule = cours dupliqué dans chacune.</p>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Salles</h2>
+          <form id="room-add" class="inline">
+            <input name="code" placeholder="Code (ex : A101)" required>
+            <input name="name" placeholder="Nom affiché (optionnel)">
+            <button type="submit">Ajouter</button>
+          </form>
+        </div>
+        <table class="table" id="rooms-table">
+          <thead><tr><th>Salle</th><th>Nom</th><th>Aujourd'hui</th><th>État</th><th>Écran</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="room-detail" hidden>
+      <div class="card-head">
+        <h2 id="rd-title"></h2>
+        <div class="row">
+          <input type="date" id="rd-day">
+          <input type="time" id="rd-time" title="Heure simulée pour l'aperçu">
+          <button id="rd-now" class="ghost">Maintenant</button>
+          <button id="rd-delete" class="danger ghost">Supprimer la salle</button>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <img id="rd-preview" class="epaper" alt="Aperçu de l'écran">
+          <form id="rd-meta" class="stack">
+            <label>Nom affiché <input name="name"></label>
+            <label>Bâtiment <input name="building"></label>
+            <label>Bandeau d'information <input name="message" placeholder="ex : Salle fermée pour travaux"></label>
+            <button type="submit">Enregistrer</button>
+          </form>
+        </div>
+        <div>
+          <h3>Cours du jour</h3>
+          <ul class="events" id="rd-events"></ul>
+          <h3>Ajouter un cours ponctuel</h3>
+          <form id="rd-add" class="stack">
+            <div class="row">
+              <label>Début <input type="time" name="start" required></label>
+              <label>Fin <input type="time" name="end" required></label>
+            </div>
+            <label>Intitulé <input name="title" required></label>
+            <div class="row">
+              <label>Enseignant <input name="teacher"></label>
+              <label>Groupe <input name="grp"></label>
+            </div>
+            <button type="submit">Ajouter</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= ÉCRANS ======================= -->
+  <section id="tab-devices" class="tab">
+    <div class="card">
+      <div class="card-head">
+        <h2>Écrans</h2>
+        <span class="muted" id="dev-updated"></span>
+      </div>
+      <table class="table" id="devices-table">
+        <thead><tr>
+          <th></th><th>Écran</th><th>Salle</th><th>Batterie</th><th>Wi-Fi</th><th>IP</th><th>Firmware</th>
+          <th>Dernier contact</th><th>Prochain réveil</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="muted small">Un nouvel écran apparaît ici automatiquement à son premier réveil, avec le statut « non affecté ».</p>
+    </div>
+
+    <div class="card" id="dev-detail" hidden>
+      <div class="card-head">
+        <h2 id="dd-title"></h2>
+        <div class="row">
+          <button id="dd-refresh">Forcer le rafraîchissement</button>
+          <button id="dd-delete" class="danger ghost">Oublier cet écran</button>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <img id="dd-preview" class="epaper" alt="Ce que l'écran affiche">
+          <form id="dd-form" class="stack">
+            <label>Nom <input name="name" placeholder="ex : Porte A101"></label>
+            <label>Salle <select name="room_code"></select></label>
+            <label>Notes <input name="notes" placeholder="emplacement, fixation, …"></label>
+            <button type="submit">Enregistrer</button>
+          </form>
+        </div>
+        <div>
+          <dl class="kv" id="dd-kv"></dl>
+          <h3>Batterie (14 jours)</h3>
+          <div id="dd-chart-batt" class="chart"></div>
+          <h3>Signal Wi-Fi (dBm)</h3>
+          <div id="dd-chart-rssi" class="chart"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= FIRMWARE ======================= -->
+  <section id="tab-firmware" class="tab">
+    <div class="grid-2">
+      <div class="card">
+        <h2>Publier un firmware (OTA)</h2>
+        <form id="fw-form" class="stack">
+          <label>Fichier <code>firmware.bin</code> <input type="file" name="file" accept=".bin" required></label>
+          <label>Version (doit correspondre à <code>FW_VERSION</code> du firmware) <input name="version" placeholder="0.2.0" required></label>
+          <button class="primary" type="submit">Envoyer</button>
+        </form>
+        <p class="muted small">Normalement, le conteneur de build publie lui-même ici (<code>docker compose run --rm firmware</code>).
+          L'upload manuel reste possible.</p>
+        <p class="muted small">Une fois une version <b>activée</b>, chaque écran dont la version diffère la télécharge
+          et s'installe à son réveil suivant, puis redémarre.</p>
+      </div>
+      <div class="card">
+        <h2>Versions</h2>
+        <table class="table" id="fw-table">
+          <thead><tr><th>Version</th><th>Taille</th><th>Envoyé le</th><th>Écrans</th><th>Flash web</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= RÉGLAGES ======================= -->
+  <section id="tab-settings" class="tab">
+    <div class="card narrow">
+      <h2>Réglages</h2>
+      <form id="settings-form" class="stack">
+        <label>Nom du site (pied de l'écran) <input name="site_name"></label>
+        <div class="row">
+          <label>Début de journée <input type="time" name="day_start"></label>
+          <label>Fin de journée <input type="time" name="day_end"></label>
+        </div>
+        <label>Jours ouvrés (1 = lundi … 7 = dimanche) <input name="active_days" placeholder="1,2,3,4,5"></label>
+        <label>Réveil de sécurité en journée (minutes) <input type="number" min="5" name="max_awake_interval"></label>
+        <label>Sommeil d'un écran non affecté (secondes) <input type="number" min="60" name="unassigned_sleep"></label>
+        <label>Seuil « batterie faible » (%) <input type="number" min="1" max="99" name="low_battery_pct"></label>
+        <label>Marquer hors ligne après (minutes de retard) <input type="number" min="5" name="offline_after_min"></label>
+        <label>Fuseau horaire <input name="timezone"></label>
+        <div class="row">
+          <label>Plage IP des écrans — début <input name="prov_ip_first" placeholder="10.20.0.31"></label>
+          <label>fin <input name="prov_ip_last" placeholder="10.20.0.250"></label>
+        </div>
+        <button class="primary" type="submit">Enregistrer</button>
+      </form>
+      <p class="muted small">Le réveil de sécurité détermine le délai maximal avant qu'une modification de dernière minute
+        apparaisse sur l'écran. Plus il est court, plus la batterie se vide vite.</p>
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

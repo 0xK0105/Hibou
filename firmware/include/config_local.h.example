@@ -1,0 +1,9 @@
+// Copiez ce fichier en config_local.h (ignoré par git) pour compiler hors Docker.
+// Avec Docker, ce fichier est généré automatiquement depuis .env.
+#define FW_VERSION          "0.1.0-local"
+#define DEFAULT_WIFI_SSID   "ECRANS-IOT"
+#define DEFAULT_WIFI_PASS   "mot-de-passe-du-ssid"
+#define DEFAULT_SERVER_URL  "http://10.20.0.10:8000"
+#define DEFAULT_NET_GW      "10.20.0.1"
+#define DEFAULT_NET_MASK    "255.255.255.0"
+#define DEFAULT_NET_DNS     "10.20.0.1"

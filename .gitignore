@@ -1,0 +1,13 @@
+.env
+data/
+builds/
+imports/*
+!imports/.gitkeep
+server/data/
+sim_out/
+__pycache__/
+*.pyc
+.pytest_cache/
+firmware/.pio/
+firmware/include/config_local.h
+tools/sample_data/

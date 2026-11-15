@@ -1,0 +1,61 @@
+# Hibou — affichage d'occupation des salles — déploiement Docker
+#
+#   docker compose up -d                                         serveur (API écrans + administration)
+#   docker compose --profile https up -d                         + reverse proxy HTTPS (Caddy)
+#   docker compose run --rm -e FW_VERSION=0.2.0 firmware         compiler + publier un firmware
+#
+# Configuration : fichier .env (copier .env.example)
+name: hibou
+
+services:
+  server:
+    build: ./server
+    image: hibou/server:${EPAPER_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      EPAPER_DATA_DIR: /data
+    ports:
+      # Port utilisé par les écrans (HTTP) et, sans le profil https, par l'administration.
+      - "${EPAPER_BIND:-0.0.0.0}:${EPAPER_PORT:-8000}:8000"
+    volumes:
+      - epaper-data:/data
+      - ./imports:/data/imports:ro          # dépôt de fichiers EDT pour l'import en ligne de commande
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  # Reverse proxy HTTPS pour l'interface d'administration (nécessaire pour le flash depuis le navigateur).
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    restart: unless-stopped
+    depends_on: [server]
+    env_file: .env
+    ports:
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  # Boîte à outils firmware : n'est pas démarrée par « up », s'utilise avec « docker compose run ».
+  firmware:
+    build:
+      context: .
+      dockerfile: firmware/Dockerfile
+    image: hibou/firmware:${EPAPER_IMAGE_TAG:-latest}
+    profiles: ["tools"]
+    env_file: .env
+    environment:
+      PUBLISH_URL: http://server:8000
+    volumes:
+      - ./firmware:/src:ro
+      - ./builds:/out
+    depends_on: [server]
+
+volumes:
+  epaper-data:
+  caddy-data:
+  caddy-config:

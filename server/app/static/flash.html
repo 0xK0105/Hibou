@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mise en service d'un écran — Hibou</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/vendor/esp-web-tools/install-button.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="logo">🦉</span> Hibou <span class="brand-sub">affichage des salles</span></div>
+  <nav class="tabs">
+    <a class="tablink" href="/">← Retour à l'administration</a>
+    <button class="active">Mise en service</button>
+  </nav>
+</header>
+
+<main>
+  <div class="card warn-card" id="no-serial" hidden>
+    <h2>Le navigateur ne peut pas accéder au port USB</h2>
+    <p>La mise en service depuis le navigateur utilise l'API <b>Web Serial</b>. Il faut :</p>
+    <ul>
+      <li><b>Chrome, Edge ou Opera</b> sur ordinateur (pas Firefox ni Safari) ;</li>
+      <li>une page servie en <b>HTTPS</b> (profil <code>https</code> du docker compose) ou depuis <code>http://localhost</code>.</li>
+    </ul>
+    <p class="muted small">Voir <code>docs/03-firmware-et-flash.md</code>, section « Flasher depuis le navigateur ».</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2>1. Flasher le firmware</h2>
+      <p class="muted small">À faire une seule fois par écran (les mises à jour suivantes passent par l'OTA).
+        Branchez l'écran en USB-C, interrupteur sur <b>ON</b>.</p>
+      <label>Version
+        <select id="fw-version"></select>
+      </label>
+      <p id="fw-none" class="report err" hidden>
+        Aucun firmware avec image complète n'a été publié. Compilez-le avec
+        <code>docker compose run --rm firmware</code> (voir la documentation).
+      </p>
+      <div id="install-slot" style="margin-top: 1rem"></div>
+      <p class="muted small">Si l'écran n'apparaît pas dans la liste : changez de câble (certains câbles USB-C ne font
+        que la charge), ou maintenez le bouton BOOT en branchant.</p>
+    </div>
+
+    <div class="card">
+      <h2>2. Configurer l'écran</h2>
+      <form id="prov-form" class="stack">
+        <div class="row">
+          <label>Adresse IP statique <input name="ip" placeholder="10.20.0.31"></label>
+          <label>Salle <select name="room_code"><option value="">— plus tard —</option></select></label>
+        </div>
+        <label>Nom de l'écran <input name="name" placeholder="ex : Porte A101"></label>
+        <details>
+          <summary class="small">Paramètres avancés (laisser vide = valeurs compilées dans le firmware)</summary>
+          <div class="stack" style="margin-top:.7rem">
+            <div class="row">
+              <label>Passerelle <input name="gw"></label>
+              <label>Masque <input name="mask"></label>
+              <label>DNS <input name="dns"></label>
+            </div>
+            <div class="row">
+              <label>SSID <input name="ssid"></label>
+              <label>Mot de passe Wi-Fi <input name="pass" type="password" autocomplete="new-password"></label>
+            </div>
+            <label>URL du serveur vue par les écrans <input name="server" placeholder="http://10.20.0.10:8000"></label>
+            <label class="check"><input type="checkbox" name="dhcp"> Repasser en DHCP (ignore l'IP ci-dessus)</label>
+            <label class="check"><input type="checkbox" name="clear"> Effacer d'abord toute la configuration de l'écran</label>
+          </div>
+        </details>
+        <button class="primary" type="submit" id="prov-btn">Connecter l'écran et appliquer</button>
+      </form>
+      <pre id="log" class="log" hidden></pre>
+      <div id="prov-result"></div>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+<script src="/static/flash.js"></script>
+</body>
+</html>

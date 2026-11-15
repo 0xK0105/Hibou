@@ -1,0 +1,9 @@
+# Reverse proxy HTTPS de l'interface d'administration.
+# EPAPER_HOSTNAME : nom DNS (ecrans.monetablissement.lan) ou IP du serveur.
+# « tls internal » : Caddy crée sa propre autorité de certification (à installer sur les postes d'admin,
+# voir docs/02-installation.md). Pour un vrai certificat, remplacez par « tls /certs/fullchain.pem /certs/key.pem ».
+{$EPAPER_HOSTNAME:localhost} {
+	tls internal
+	encode gzip
+	reverse_proxy server:8000
+}
